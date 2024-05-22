@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Signup Page</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'signup.css' %}">
+</head>
+
+<body>
+    <form method="post" id="signupForm" onsubmit="encryptPassword()">
+        {% csrf_token %}
+        <h3>Signup</h3>
+
+        <label for="username">Username</label>
+        <input type="text" placeholder="e.g., John" name="username" id="username" required>
+
+        <label for="email">Email</label>
+        <input type="email" placeholder="e.g., john@gmail.com" name="email" id="email" required>
+
+        <!-- Error message for invalid email format -->
+        <span id="emailError" class="error-message" style="display: none;">Please enter a valid email address</span>
+
+        <label for="password1">Password</label>
+        <div class="password-input">
+            <input type="password" placeholder="e.g., ********" id="password1" name="password1" required>
+            <button type="button" id="togglePassword1" onClick="togglePasswordVisibility('password1', 'togglePassword1')">
+                <i id="eyeIcon1" class="far fa-eye"></i>
+            </button>
+        </div>
+
+        <div class="password-strength">
+            <div id="strengthBar"></div>
+        </div>
+
+        <!-- Error messages for password strength -->
+        <div class="password-error">
+            <span id="lengthError" class="error-message" style="display: none;">Password should be at least 8 characters long</span>
+            <span id="caseError" class="error-message" style="display: none;">Password should include at least one uppercased letter</span>
+            <span id="numberError" class="error-message" style="display: none;">Password should include at least one number</span>
+        </div>
+
+        <label for="password2">Confirm Password</label>
+        <div class="password-input">
+            <input type="password" placeholder="e.g., ********" id="password2" name="password2" required>
+            <button type="button" id="togglePassword2" onClick="togglePasswordVisibility('password2', 'togglePassword2')">
+                <i id="eyeIcon1" class="far fa-eye"></i>
+            </button>
+        </div>
+            
+        <span id="passwordError" class="error-message"></span>
+
+        {% if error_message %}
+        <p class="error-message">{{ error_message }}</p>
+        {% endif %}
+
+        <button type="submit">Sign Up</button>
+        <p>Already have an account?<a href="{% url 'login' %}" >&nbsp;login&nbsp;</a></p>
+    </form>
+
+    <script>
+        // Function to toggle password visibility
+        function togglePasswordVisibility(inputId, buttonId) {
+            var input = document.getElementById(inputId);
+            var button = document.getElementById(buttonId);
+            var icon = button.querySelector("i");
+
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            } else {
+                input.type = "password";
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            }
+        }
+
+        // Function to show/hide password error message
+        function checkPasswordMatch() {
+            var pass1 = document.getElementById("password1").value;
+            var pass2 = document.getElementById("password2").value;
+            var errorSpan = document.getElementById("passwordError");
+
+            if (pass1 !== pass2 && pass2 !== pass1) {
+                errorSpan.textContent = "Passwords do not match"; 
+            } else if (pass2 !== pass1) {
+                errorSpan.textContent = "Passwords do not match"; 
+            } else {
+                errorSpan.textContent = ""; 
+            }
+        }
+
+        // Function to check password strength
+        function checkPasswordStrength() {
+            var password = document.getElementById("password1").value;
+            var strengthBar = document.getElementById("strengthBar");
+            var lengthError = document.getElementById("lengthError");
+            var caseError = document.getElementById("caseError");
+            var numberError = document.getElementById("numberError");
+
+            strengthBar.style.backgroundColor = "";
+            lengthError.style.display = "none";
+            caseError.style.display = "none";
+            numberError.style.display = "none";
+
+            if (password.length < 8) {
+                lengthError.style.display = "block";
+            } else if (!/[a-z]/.test(password) || !/[A-Z]/.test(password)) {
+                caseError.style.display = "block";
+            } else if (!/[0-9]/.test(password)) {
+                numberError.style.display = "block";
+            }
+
+            // Set password strength bar color and width
+            if (password.length >= 8 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /[0-9]/.test(password)) {
+                strengthBar.style.backgroundColor = "green";
+            } else if (password.length >= 6 && (/[a-z]/.test(password) || /[A-Z]/.test(password))) {
+                strengthBar.style.backgroundColor = "yellow";
+            } else if (password.length >= 6 && /[0-9]/.test(password)) {
+                strengthBar.style.backgroundColor = "orange";
+            }
+
+            var strength = Math.min(password.length / 10, 1) * 100;
+            strengthBar.style.width = strength + "%";
+        }
+
+        // Function for password Encryption
+        function encryptPassword() {
+            var password = document.getElementById('password1').value;
+            var encryptedPassword = simpleEncrypt(password);
+            document.getElementById('password1').value = encryptedPassword;
+
+            var confirm_password = document.getElementById('password2').value;
+            document.getElementById('password2').value = simpleEncrypt(confirm_password);
+        }
+
+        // Encryption function
+        function simpleEncrypt(plaintext) {
+            var encrypted = '';
+            for (var i = 0; i < plaintext.length; i++) {
+                encrypted += String.fromCharCode(plaintext.charCodeAt(i) + 1);
+            }
+            return encrypted;
+        }
+
+        // Event listeners to check password match and format on input
+        document.getElementById("password1").addEventListener("input", checkPasswordStrength);
+        document.getElementById("password1").addEventListener("input", checkPasswordMatch);
+        document.getElementById("password2").addEventListener("input", checkPasswordMatch);
+
+        // Function to validate email format
+        function validateEmail() {
+            var email = document.getElementById("email").value;
+            var emailError = document.getElementById("emailError");
+
+         if (!email.includes(".com") && !email.includes(".edu")) {
+                emailError.style.display = "block";
+            } else {
+                emailError.style.display = "none";
+            }
+        }
+
+        // Event listener for email input
+        document.getElementById("email").addEventListener("input", validateEmail);
+
+    </script>
+</body>
+</html>

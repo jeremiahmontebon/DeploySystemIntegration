@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Student Information</title>
+
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'studentInfo.css' %}">
+
+</head>
+
+<body>
+    <div>
+        <div class="buttons-container">
+            <button type="button" onclick="toggleStudentList()">View Student List</button>
+            <button type="button" onclick="showForm()">Add New Student</button>
+            <a href="{% url 'admin' %}">Back</a>
+        </div>
+        
+        <form class="table-container hidden" id="form-container" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <h3>Add Student Information</h3>
+        
+            <label for="firstname">First Name</label>
+            <input type="text" placeholder="e.g., John" name="firstname" id="firstname" required>
+        
+            <label for="lastname">Last Name</label>
+            <input type="text" placeholder="e.g., Doe" name="lastname" id="lastname" required>
+            
+            <label for="course">Course Name</label>
+            <select name="course" id="course" required>
+                {% for course in courses %}
+                    <option value="{{ course.course_name }}">{{ course.course_name }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="face_image">Upload Image</label>
+            <input type="file" name="face_image" id="face_image" required>
+        
+            <button type="submit">Create</button>
+        </form>
+
+        <div class="table-container" id="table-container">
+            <h3>Student List</h3>
+            <label for="filterCourse">Filter by Course:</label>
+            <select id="filterCourse">
+                <option value="">All</option>
+                {% for course in courses %}
+                    <option value="{{ course.course_name }}">{{ course.course_name }}</option>
+                {% endfor %}
+            </select>
+
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>Course</th>
+                        <th>Teacher</th>
+                        <th>Name</th>
+                        <th>Photo</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody">
+                    {% for student in students %}
+                        <tr id="row_{{ student.id }}" data-course="{{ student.course.course_name }}">
+                            <td>{{ student.course.course_name }}</td>
+                            <td>{{ student.course.teacher }}</td>
+                            <td>{{ student.last_name }}, {{ student.first_name }}</td>
+                            <td><img src="{{ student.face_image.url }}" alt="{{ student.first_name }} {{ student.last_name }}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 2px;"></td>
+                            <td><button onclick="confirmDelete('{{ student.id }}', '{{ student.first_name }} {{ student.last_name }}')" style="padding: 10px 20px;">Delete</button></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="dialog" class="hidden dialog-container">
+        <p id="dialogText"></p>
+        <button onclick="closeDialog()">No</button>
+        <button onclick="deleteConfirmed()">Yes</button>
+    </div>
+
+    <div id="messageBox" class="hidden message-box">
+        <p id="messageText"></p>
+    </div>
+
+    <script>
+        function showForm() {
+            const formContainer = document.getElementById('form-container');
+            const studentListContainer = document.getElementById('table-container');
+            formContainer.classList.remove('hidden');
+            studentListContainer.classList.add('hidden');
+        }
+
+        function toggleStudentList() {
+            const formContainer = document.getElementById('form-container');
+            const studentListContainer = document.getElementById('table-container');
+            studentListContainer.classList.remove('hidden');
+            formContainer.classList.add('hidden');
+        }
+
+        document.getElementById('filterCourse').addEventListener('change', function() {
+            var selectedCourse = this.value;
+            var studentRows = document.querySelectorAll('#studentTableBody tr');
+
+            studentRows.forEach(function(row) {
+                var course = row.getAttribute('data-course');
+                if (selectedCourse === '' || course === selectedCourse) {
+                    row.style.display = 'table-row';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        function confirmDelete(id, studentName) {
+            const dialog = document.getElementById('dialog');
+            dialog.classList.remove('hidden');
+            dialog.dataset.studentId = id;
+            dialog.dataset.studentName = studentName;
+
+            // Display the username in the dialog
+            const dialogText = document.getElementById('dialogText');
+            dialogText.innerText = `Are you sure you want to delete ${studentName}'s Information?`;
+
+            // Add overlay
+            const overlay = document.createElement('div');
+            overlay.classList.add('overlay');
+            document.body.appendChild(overlay);
+        }
+
+        function deleteConfirmed() {
+            const id = document.getElementById('dialog').dataset.studentId;
+            const studentName = document.getElementById('dialog').dataset.studentName;
+            fetch(`/studentInformation/${id}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'), // Include CSRF token
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest' // Add this header for Django to recognize it as an AJAX request
+                },
+                body: JSON.stringify({ id: id }) // Send student ID in the request body
+            })
+            .then(response => {
+                if (response.ok) {
+                    document.getElementById(`row_${id}`).remove();
+                    showMessage(`${studentName}'s information has been successfully deleted.`);
+                } else {
+                    alert('Failed to delete student.');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+            closeDialog();
+        }
+
+        function closeDialog() {
+            const dialog = document.getElementById('dialog');
+            dialog.classList.add('hidden');
+
+        // Remove overlay
+        const overlay = document.querySelector('.overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+
+        function showMessage(message) {
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+            messageText.innerText = message;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 3000);
+        }
+
+        function getCookie(name) {
+            const cookieValue = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return cookieValue ? cookieValue.pop() : '';
+        }
+    </script>
+</body>
+</html>

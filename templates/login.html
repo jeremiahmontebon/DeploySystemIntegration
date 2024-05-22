@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Design by foolishdeveloper.com -->
+    <title>Login Page</title>
+    
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+    
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'login.css' %}">
+</head>
+
+<body>
+    <form method="post" onsubmit="encryptPassword()">
+        <h3>Login</h3>
+        {% csrf_token %} 
+        <label for="username">Username</label>
+        <input type="text" placeholder="e.g., John" id="username" name="username" required>
+
+        <label for="password">Password</label>
+        <div class="password-input">
+            <input type="password" placeholder="e.g., ********" id="password" name="password" required>
+            <button type="button" id="togglePassword" onClick="togglePasswordVisibility('password', 'togglePassword')">
+                <i id="eyeIcon" class="far fa-eye"></i>
+            </button>
+        </div>
+
+        {% if error_message %}
+        <p class="error-message">{{ error_message }}</p>
+        {% endif %}
+        
+        <button type="submit">Log In</button>
+
+        <p>Don't have an account?<a href="{% url 'signup' %}">&nbsp;Signup&nbsp;</a></p>
+    </form>
+
+    <script>
+        function encryptPassword(){
+            var password = document.getElementById('password').value;
+            var encryptedPassword = simpleEncrypt(password);
+            document.getElementById('password').value = encryptedPassword;
+        }
+
+        //simple encryption function
+        function simpleEncrypt(plaintext){
+            var encrypted = '';
+            for (var i = 0; i < plaintext.length; i++){
+                encrypted += String.fromCharCode(plaintext.charCodeAt(i) + 1);
+            }
+            return encrypted;
+        }
+
+        function togglePasswordVisibility(inputId, buttonId) {
+            var input = document.getElementById(inputId);
+            var button = document.getElementById(buttonId);
+            var icon = button.querySelector("i");
+
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            } else {
+                input.type = "password";
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Information</title>
+
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'studentList.css' %}">
+
+
+</head>
+
+<body>
+    <div>
+        <div class="buttons-container">
+            <a href="{% url 'home' %}">Back</a>
+        </div>
+        
+        <div class="table-container" id="table-container">
+            <h3>Student List</h3>
+            <label for="filterCourse">Filter by Course:</label>
+            <select id="filterCourse" onchange="filterStudents()">
+                <option value="">All</option>
+                {% for course in courses %}
+                    <option value="{{ course.course_name }}">{{ course.course_name }}</option>
+                {% endfor %}
+            </select>
+
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>Course</th>
+                        <th>Name</th>
+                        <th>Photo</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody">
+                    {% for student in student_info %}  
+                        <tr id="row_{{ student.id }}" data-course="{{ student.course.course_name }}">
+                            <td>{{ student.course.course_name }}</td>
+                            <td>{{ student.last_name }}, {{ student.first_name }}</td>
+                            <td><img src="{{ student.face_image.url }}" alt="{{ student.first_name }} {{ student.last_name }}" style="width: 100px; height: 100px; object-fit: cover;"></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function filterStudents() {
+            const selectedCourse = document.getElementById("filterCourse").value;
+            const rows = document.querySelectorAll("#studentTableBody tr");
+            rows.forEach(row => {
+                const course = row.getAttribute("data-course");
+                row.style.display = selectedCourse === "" || course === selectedCourse ? "table-row" : "none";
+            });
+        }
+    </script>
+</body>
+</html>

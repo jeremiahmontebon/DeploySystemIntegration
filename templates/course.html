@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Course</title>
+
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'coursea.css' %}">
+
+</head>
+<body>
+    <div>
+        <div class="buttons-container">
+            <button type="button" onclick="showCourseList()">View Course List</button>
+            <button type="button" onclick="showAddCourse()">Add Course</button>
+            <a href="{% url 'admin' %}">Back</a>
+        </div>
+
+        <form class="table-container hidden" method="post" id="form-container" class="hidden">
+            {% csrf_token %}
+            <h3>Create Course</h3>
+    
+            <label for="course">Course Name</label>
+            <input type="text" placeholder="e.g., CSIT339-G1" name="course" id="course" required>
+    
+            <label for="teacher">Assigned Teacher</label>
+            <select name="teacher" id="teacher" required>
+                {% for teacher in teachers %}
+                    <option value="{{ teacher.username }}">{{ teacher.username }}</option>
+                {% endfor %}
+            </select>    
+            <button type="submit">Create</button>
+        </form>
+
+        <div class="table-container" id="table-container">
+            <h3>Course List</h3>
+                    
+            <label for="filterTeacher">Filter by Teacher:</label>
+            <select id="filterTeacher">
+                <option value="">All</option>
+                {% for teacher in teachers %}
+                    <option value="{{ teacher.username }}">{{ teacher.username }}</option>
+                {% endfor %}
+            </select>
+                    
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>Course Name</th>
+                        <th>Teacher</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for course in courses %}
+                        <tr id="row_{{ course.id }}" data-course="{{ course.course_name }}" data-teacher="{{ course.teacher.username }}">
+                            <td>{{ course.course_name }}</td>
+                            <td>{{ course.teacher.username }}</td>
+                            <td><button onclick="confirmDelete('{{ course.id }}', '{{ course.course_name }}')" style="padding: 10px 20px;">Delete</button></td>                        
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="dialog" class="hidden dialog-container">
+        <p id="dialogText"></p>
+        <button onclick="closeDialog()">No</button>
+        <button onclick="deleteConfirmed()">Yes</button>
+    </div>
+
+    <div id="messageBox" class="hidden message-box">
+        <p id="messageText"></p>
+    </div>
+
+    <script>
+        function showCourseList() {
+            const formContainer = document.getElementById('form-container');
+            const courseListContainer = document.getElementById('table-container');
+            courseListContainer.classList.remove('hidden');
+            formContainer.classList.add('hidden');
+        }
+
+        function showAddCourse() {
+            const formContainer = document.getElementById('form-container');
+            const courseListContainer = document.getElementById('table-container');
+            courseListContainer.classList.add('hidden');
+            formContainer.classList.remove('hidden');
+        }
+
+        document.getElementById('filterTeacher').addEventListener('change', filterTable);
+
+        function filterTable() {
+            var selectedTeacher = document.getElementById('filterTeacher').value;
+            var courseRows = document.querySelectorAll('#table-container tbody tr');
+
+            courseRows.forEach(function(row) {
+                var teacher = row.getAttribute('data-teacher');
+                var teacherMatch = selectedTeacher === '' || teacher === selectedTeacher;
+
+                if (teacherMatch) {
+                    row.style.display = 'table-row';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function confirmDelete(id, courseName) {
+            const dialog = document.getElementById('dialog');
+            dialog.classList.remove('hidden');
+            dialog.dataset.courseId = id;
+            dialog.dataset.courseName = courseName;
+
+            // Display the course name in the dialog
+            const dialogText = document.getElementById('dialogText');
+            dialogText.innerText = `Are you sure you want to delete ${courseName}?`;
+
+            // Add overlay
+            const overlay = document.createElement('div');
+            overlay.classList.add('overlay');
+            document.body.appendChild(overlay);
+        }
+
+        function deleteConfirmed() {
+            const id = document.getElementById('dialog').dataset.courseId;
+            const courseName = document.getElementById('dialog').dataset.courseName;
+            fetch(`/course/${id}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'), // Include CSRF token
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest' // Add this header for Django to recognize it as an AJAX request
+                },
+                body: JSON.stringify({ id: id })
+            })
+            .then(response => {
+                if (response.ok) {
+                    document.getElementById(`row_${id}`).remove();
+                    return `${courseName} has been successfully deleted.`;
+                } else {
+                    throw new Error('Failed to delete course.');
+                }
+            })
+            .then(message => {
+                showMessage(message);
+            })
+            .catch(error => {
+                showMessage(error.message);
+                console.error('Error:', error);
+            });
+            closeDialog();
+        }
+
+        function closeDialog() {
+            const dialog = document.getElementById('dialog');
+            dialog.classList.add('hidden');
+
+        // Remove overlay
+        const overlay = document.querySelector('.overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+
+        function showMessage(message) {
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+            messageText.innerText = message;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 3000);
+        }
+
+        function getCookie(name) {
+            const cookieValue = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return cookieValue ? cookieValue.pop() : '';
+        }
+    </script>
+</body>
+</html>

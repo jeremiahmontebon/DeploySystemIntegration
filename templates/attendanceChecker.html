@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Checker</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'attendance.css' %}">
+</head>
+<body>
+    <div>
+        <div class="buttons-container">
+            <a href="{% url 'home' %}">Back</a>
+        </div>
+        
+        <div class="table-container" id="table-container">
+            <h3>Attendance Checker</h3>
+            <label for="filterCourse">Filter by Course:</label>
+             <select id="filterCourse" onchange="filterAttendance()">
+                <option value="">Select a course</option>
+                {% for course in courses %}
+                    <option value="{{ course.course_name }}">{{ course.course_name }}</option>
+                {% endfor %}
+            </select>
+            
+            <button onclick="downloadExcel()">Download as Excel</button>
+            <button id="newAttendanceBtn">New Attendance</button> <!-- New button added -->
+            <button id="takeAttendanceBtn">Take Attendance</button>
+            <a href="{% url 'previousRecords' %}" id="previousAttendanceBtn">Previous Attendance</a>
+            
+            <div id="attendanceTable">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function filterAttendance() {
+            const selectedCourse = document.getElementById("filterCourse").value;
+            const formData = new FormData();
+            formData.append('course', selectedCourse);
+
+            fetch("{% url 'attendanceChecker' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('attendanceTable').innerHTML = data.html;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function downloadExcel() {
+            const selectedCourse = document.getElementById("filterCourse").value;
+            window.location.href = `{% url 'attendanceChecker' %}?download_excel&course=${selectedCourse}`;
+        }
+
+        document.getElementById('takeAttendanceBtn').addEventListener('click', function() {
+            takeAttendance();
+        });
+
+        function takeAttendance() {
+            fetch('{% url "take_attendance" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Attendance taken successfully!');
+                } else {
+                    alert('Error taking attendance: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error taking attendance:', error);
+            });
+        }
+
+        // Add event listener for the New Attendance button
+        document.getElementById('newAttendanceBtn').addEventListener('click', function() {
+            fetch('{% url "clear_attendance" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Attendance records cleared successfully!');
+                    // Clear the attendance table
+                    document.getElementById('attendanceTable').innerHTML = '';
+                } else {
+                    alert('Error clearing attendance records: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error clearing attendance records:', error);
+            });
+        });
+    </script>
+</body>
+</html>
